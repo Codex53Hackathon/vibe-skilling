@@ -35,6 +35,67 @@ Vibe Skilling closes that loop by:
 - `/backend` FastAPI API
 - `/PRD.md` hackathon product requirements
 - `/render.yaml` deployment configuration
+- `/AGENTS.md` agent runbook and deployment instructions
+- `/scripts/setup-codex-render-mcp.sh` teammate setup for Codex Render MCP
+
+## Render Deployment (Current)
+
+This project is currently deployed with **Render direct-created services** (via MCP), and also includes `render.yaml` as Infrastructure-as-Code fallback.
+
+### Active services
+
+- API: `vibe-skilling-api`
+  - URL: [https://vibe-skilling-api.onrender.com](https://vibe-skilling-api.onrender.com)
+  - Build: `cd backend && pip install .`
+  - Start: `cd backend && uvicorn backend.main:app --host 0.0.0.0 --port $PORT`
+  - Env vars: `APP_APP_NAME=Backend API`
+
+- Frontend: `vibe-skilling-web`
+  - URL: [https://vibe-skilling-web.onrender.com](https://vibe-skilling-web.onrender.com)
+  - Build: `cd frontend && npm ci && npm run build`
+  - Publish path: `frontend/dist`
+  - Env vars: `VITE_API_URL=https://vibe-skilling-api.onrender.com`
+
+### Do we need `render.yaml`?
+
+Not strictly for the already-created direct services. Those keep auto-deploying from `main` as configured in Render.
+
+We still keep `render.yaml` because it is useful for:
+- reproducible re-creation of infra,
+- sharing deployment config in Git,
+- one-click Blueprint setup in a new workspace/account.
+
+### How deployment is working
+
+1. Push code to `main`.
+2. Render auto-deploy triggers for both services.
+3. API runs from `backend/`; frontend builds from `frontend/`.
+4. Frontend uses `VITE_API_URL` pointing to the API service URL.
+
+Note: `frontend/package-lock.json` is required because build uses `npm ci`.
+
+### Codex MCP setup for teammates
+
+Codex stores MCP servers in user-global config (`~/.codex/config.toml`), not directly in repo files.  
+This repo provides a shared setup script so teammates can apply the same config consistently.
+
+```bash
+export RENDER_API_KEY="rnd_..."
+bash scripts/setup-codex-render-mcp.sh
+```
+
+After running:
+1. Restart Codex.
+2. Select Render workspace in chat:
+   - `Set my Render workspace to tea-d5v4eq94tr6s739e2bh0`
+
+### Quick verification
+
+```bash
+curl -i https://vibe-skilling-api.onrender.com/health
+```
+
+Expected: HTTP `200` and `{"status":"ok"}`.
 
 ## Current Status
 

@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-import random
+import json
+import re
 from dataclasses import dataclass
 from typing import Any
+
+from openai import OpenAI
 
 from backend.services.conversation_store import ConversationStore
 
@@ -32,8 +35,17 @@ EXISTING_SKILLS: tuple[ExistingSkill, ...] = (
 
 
 class SkillSuggestionService:
-    def __init__(self, store: ConversationStore) -> None:
+    def __init__(
+        self,
+        *,
+        store: ConversationStore,
+        openai_api_key: str,
+        model: str,
+    ) -> None:
         self._store = store
+        self._model = model
+
+        self._client = OpenAI(api_key=openai_api_key)
 
     def ingest_and_suggest(
         self,
@@ -44,34 +56,114 @@ class SkillSuggestionService:
         self._store.save_events(session_id, events)
         history = self._store.get_history(session_id)
 
-        # Demo behavior: trigger on ~1/3 of requests.
-        if random.randint(1, 3) != 1:
+        analysis = self._analyze_history(history=history)
+
+        if not analysis.get("should_suggest"):
             return {"status": "ok"}
 
-        history_text = " ".join(
-            item.get("message", "")
-            for item in history
-            if isinstance(item.get("message"), str)
-        ).lower()
+        suggestion_type = str(analysis.get("suggestion_type", "none")).lower()
+        message = str(
+            analysis.get("message", "Consider adding this guidance to a project skill.")
+        )
 
-        for skill in EXISTING_SKILLS:
-            if any(keyword in history_text for keyword in skill.keywords):
-                return {
-                    "status": "suggested_existing_skill",
-                    "message": f"Consider updating the existing skill '{skill.name}'.",
-                    "skill": {
-                        "name": skill.name,
-                        "path": skill.path,
-                        "description": skill.description,
-                    },
-                }
+        if suggestion_type == "existing":
+            existing_skill_name = str(analysis.get("existing_skill_name", "")).strip().lower()
+            for skill in EXISTING_SKILLS:
+                if skill.name.lower() == existing_skill_name:
+                    return {
+                        "status": "suggested_existing_skill",
+                        "message": message,
+                        "skill": {
+                            "name": skill.name,
+                            "path": skill.path,
+                            "description": skill.description,
+                        },
+                    }
+
+            # If the model asks for existing but we cannot map it, fall back to no-op.
+            return {"status": "ok"}
+
+        if suggestion_type != "new":
+            return {"status": "ok"}
+
+        skill_name = self._slugify(str(analysis.get("new_skill_name", "session-insights-skill")))
+        if not skill_name:
+            skill_name = "session-insights-skill"
+        new_skill_description = str(
+            analysis.get(
+                "new_skill_description",
+                "Skill synthesized from repeated conversation corrections.",
+            )
+        )
 
         return {
             "status": "suggested_new_skill",
-            "message": "Consider creating a new skill from this repeated correction.",
+            "message": message,
             "skill": {
-                "name": "style-guard",
-                "path": ".codex/skills/style-guard/SKILL.md",
-                "description": "Style guardrails learned from conversation corrections.",
+                "name": skill_name,
+                "path": f".codex/skills/{skill_name}/SKILL.md",
+                "description": new_skill_description,
             },
         }
+
+    def _analyze_history(self, *, history: list[dict[str, Any]]) -> dict[str, Any]:
+        if not history:
+            return {"should_suggest": False}
+
+        history_lines: list[str] = []
+        for item in history[-80:]:
+            speaker = str(item.get("speaker", "unknown"))
+            message = str(item.get("message", "")).strip()
+            if message:
+                history_lines.append(f"{speaker}: {message}")
+
+        if not history_lines:
+            return {"should_suggest": False}
+
+        existing_skills_block = "\n".join(
+            f"- {skill.name}: {skill.description} ({skill.path})" for skill in EXISTING_SKILLS
+        )
+        prompt = (
+            "You analyze coding conversation history and decide if a skill suggestion should be emitted.\n"
+            "Return strict JSON with keys:\n"
+            "should_suggest (boolean), suggestion_type ('none'|'existing'|'new'), "
+            "existing_skill_name (string), new_skill_name (string), "
+            "new_skill_description (string), message (string).\n"
+            "Rules:\n"
+            "- should_suggest=true only if the user gives a durable correction/instruction to remember.\n"
+            "- suggestion_type='existing' only if one of the existing skills clearly matches.\n"
+            "- suggestion_type='new' only if a new reusable skill is justified.\n"
+            "- If uncertain, set should_suggest=false and suggestion_type='none'.\n\n"
+            f"Existing skills:\n{existing_skills_block}\n\n"
+            "Conversation history:\n"
+            f"{chr(10).join(history_lines)}"
+        )
+
+        try:
+            response = self._client.chat.completions.create(
+                model=self._model,
+                temperature=0,
+                response_format={"type": "json_object"},
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a strict JSON classifier for skill suggestions.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+            )
+            content = response.choices[0].message.content or "{}"
+            parsed = json.loads(content)
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception:
+            return {"should_suggest": False}
+
+        return {"should_suggest": False}
+
+    @staticmethod
+    def _slugify(name: str) -> str:
+        normalized = name.strip().lower()
+        normalized = re.sub(r"[^a-z0-9]+", "-", normalized)
+        normalized = normalized.strip("-")
+        return normalized[:50]

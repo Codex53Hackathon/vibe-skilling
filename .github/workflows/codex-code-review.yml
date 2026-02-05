@@ -87,7 +87,7 @@ jobs:
       - name: Run Codex structured review
         id: run-codex
         continue-on-error: true
-        uses: openai/codex-action@main
+        uses: openai/codex-action@dbe3d52c04f09b8b5712c97eae07e413dff25442
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           prompt-file: codex-prompt.md

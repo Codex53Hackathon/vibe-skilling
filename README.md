@@ -97,6 +97,35 @@ curl -i https://vibe-skilling-api.onrender.com/health
 
 Expected: HTTP `200` and `{"status":"ok"}`.
 
+## Codex PR Code Reviews
+
+This repo now includes a GitHub Actions workflow for automated Codex PR reviews:
+- Workflow: `./.github/workflows/codex-code-review.yml`
+- Prompt template: `./review_prompt.md`
+- Output schema: `./codex-output-schema.json`
+
+### What it does
+
+On every PR update (`opened`, `reopened`, `synchronize`, `ready_for_review`), the workflow:
+1. Builds a review prompt that includes the PR diff.
+2. Calls `openai/codex-action` with structured output schema.
+3. Publishes inline PR review comments for each finding.
+4. Publishes one summary comment with overall correctness verdict and confidence.
+
+### Required GitHub setup
+
+Add this repository secret:
+- `OPENAI_API_KEY`: your OpenAI API key used by `openai/codex-action`.
+
+Optional repository variables:
+- `CODEX_MODEL` (default: `gpt-5-codex`)
+- `CODEX_PROMPT_PATH` (default: `review_prompt.md`)
+
+### Notes
+
+- The workflow intentionally skips forked PRs because repository secrets are not available there.
+- Review comments are generated only when Codex returns structured findings.
+
 ## Current Status
 
 Implemented:

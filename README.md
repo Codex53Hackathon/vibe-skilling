@@ -100,9 +100,9 @@ Expected: HTTP `200` and `{"status":"ok"}`.
 ## Codex PR Code Reviews
 
 This repo now includes a GitHub Actions workflow for automated Codex PR reviews:
-- Workflow: `/Users/maksymilian/codex-hackathon/vibe-skilling/.github/workflows/codex-code-review.yml`
-- Prompt template: `/Users/maksymilian/codex-hackathon/vibe-skilling/review_prompt.md`
-- Output schema: `/Users/maksymilian/codex-hackathon/vibe-skilling/codex-output-schema.json`
+- Workflow: `./.github/workflows/codex-code-review.yml`
+- Prompt template: `./review_prompt.md`
+- Output schema: `./codex-output-schema.json`
 
 ### What it does
 

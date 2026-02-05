@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["diff", "summary"],
+  "properties": {
+    "diff": { "type": "string" },
+    "summary": { "type": "string" },
+    "files_touched": { "type": "array", "items": { "type": "string" } },
+    "safety_notes": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": true
+}
+

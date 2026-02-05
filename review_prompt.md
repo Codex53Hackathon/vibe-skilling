@@ -7,6 +7,7 @@ When reporting a finding:
 - Use a short title.
 - Explain why this is a real issue and the likely impact.
 - Keep feedback specific and non-speculative.
+- Include `priority` as an integer from 0 to 3, where 0 is most severe and 3 is least severe.
 
 Prioritize meaningful issues over style nits.
 Only report findings tied to the supplied diff.

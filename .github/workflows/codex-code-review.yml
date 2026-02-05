@@ -56,6 +56,7 @@ jobs:
               printf '%s\n' "Focus on issues that impact correctness, performance, security, maintainability, or developer experience."
               printf '%s\n' "Flag only actionable issues introduced by the pull request."
               printf '%s\n' "When you flag an issue, provide a short, direct explanation and cite the affected file and line range."
+              printf '%s\n' "For each finding, include a priority as an integer from 0 to 3, where 0 is most severe and 3 is least severe."
               printf '%s\n' "Prioritize severe issues and avoid nit-level comments unless they block understanding of the diff."
               printf '%s\n' "After listing findings, produce an overall correctness verdict (\"patch is correct\" or \"patch is incorrect\") with a concise justification and a confidence score between 0 and 1."
               printf '%s\n' "Ensure that file citations and line numbers are exactly correct using the tools available; if they are incorrect your comments will be rejected."
@@ -192,4 +193,22 @@ jobs:
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/${REPOSITORY}/issues/${PR_NUMBER}/comments" \
             -d @/tmp/summary.json >/dev/null
+        shell: bash
+
+      - name: Fail check on incorrect verdict
+        if: ${{ always() }}
+        env:
+          REVIEW_JSON: codex-output.json
+        run: |
+          set -euo pipefail
+          if [ ! -s "$REVIEW_JSON" ]; then
+            echo "No Codex output present; not enforcing verdict gate."
+            exit 0
+          fi
+
+          overall_state=$(jq -r '.overall_correctness' "$REVIEW_JSON")
+          if [ "$overall_state" = "patch is incorrect" ]; then
+            echo "::error::Codex reported patch is incorrect."
+            exit 1
+          fi
         shell: bash

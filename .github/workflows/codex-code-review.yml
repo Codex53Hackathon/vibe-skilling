@@ -84,6 +84,7 @@ jobs:
 
       - name: Run Codex structured review
         id: run-codex
+        continue-on-error: true
         uses: openai/codex-action@main
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
@@ -100,6 +101,13 @@ jobs:
             jq '.' codex-output.json || true
           else
             echo "Codex output file missing"
+            echo "::warning::Codex action did not produce codex-output.json. Check the Run Codex structured review step logs."
+            {
+              echo "### Codex automated review skipped"
+              echo ""
+              echo "The Codex action did not produce \`codex-output.json\`."
+              echo "Review the \`Run Codex structured review\` step logs for details."
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
         shell: bash
 

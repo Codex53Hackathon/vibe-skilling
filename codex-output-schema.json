@@ -21,6 +21,7 @@
           },
           "priority": {
             "type": "integer",
+            "description": "Severity priority where 0 is most severe and 3 is least severe.",
             "minimum": 0,
             "maximum": 3
           },

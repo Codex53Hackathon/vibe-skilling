@@ -151,8 +151,25 @@ jobs:
               -d "$payload" >/tmp/comment-response.json
 
             if jq -e '.message? != null' /tmp/comment-response.json >/dev/null 2>&1; then
-              echo "Skipping one invalid comment payload:"
-              cat /tmp/comment-response.json
+              if jq -e '.message | test("line must be part of the diff"; "i")' /tmp/comment-response.json >/dev/null 2>&1; then
+                left_payload="$(jq -c '.side = "LEFT" | (if has("start_side") then .start_side = "LEFT" else . end)' <<<"$payload")"
+                curl -sS \
+                  -X POST \
+                  -H "Accept: application/vnd.github+json" \
+                  -H "Content-Type: application/json" \
+                  -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                  -H "X-GitHub-Api-Version: 2022-11-28" \
+                  "https://api.github.com/repos/${REPOSITORY}/pulls/${PR_NUMBER}/comments" \
+                  -d "$left_payload" >/tmp/comment-response-left.json
+
+                if jq -e '.message? != null' /tmp/comment-response-left.json >/dev/null 2>&1; then
+                  echo "Skipping one invalid comment payload after RIGHT and LEFT attempts:"
+                  cat /tmp/comment-response-left.json
+                fi
+              else
+                echo "Skipping one invalid comment payload:"
+                cat /tmp/comment-response.json
+              fi
             fi
           done < findings.jsonl
         shell: bash

@@ -171,9 +171,18 @@ jobs:
           overall_state=$(jq -r '.overall_correctness' "$REVIEW_JSON")
           overall_body=$(jq -r '.overall_explanation' "$REVIEW_JSON")
           confidence=$(jq -r '.overall_confidence_score' "$REVIEW_JSON")
-          msg="**Codex automated review**\n\nVerdict: ${overall_state}\nConfidence: ${confidence}\n\n${overall_body}"
-
-          jq -n --arg body "$msg" '{body: $body}' > /tmp/summary.json
+          jq -n \
+            --arg overall_state "$overall_state" \
+            --arg confidence "$confidence" \
+            --arg overall_body "$overall_body" \
+            '{
+              body: (
+                "**Codex automated review**\n\n" +
+                "Verdict: " + $overall_state + "\n" +
+                "Confidence: " + $confidence + "\n\n" +
+                $overall_body
+              )
+            }' > /tmp/summary.json
 
           curl -sS \
             -X POST \

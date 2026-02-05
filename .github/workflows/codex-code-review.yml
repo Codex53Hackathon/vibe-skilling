@@ -20,6 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      issues: write
       pull-requests: write
     env:
       CODEX_MODEL: ${{ vars.CODEX_MODEL || 'gpt-5-codex' }}

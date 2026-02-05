@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["insights_markdown"],
+  "properties": {
+    "insights_markdown": { "type": "string" },
+    "key_points": { "type": "array", "items": { "type": "string" } },
+    "recommended_skills": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "rationale"],
+        "properties": {
+          "name": { "type": "string" },
+          "rationale": { "type": "string" },
+          "scope": { "type": "string" },
+          "files_to_create": { "type": "array", "items": { "type": "string" } }
+        },
+        "additionalProperties": true
+      }
+    },
+    "recommended_agents_md_changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "rationale"],
+        "properties": {
+          "path": { "type": "string" },
+          "rationale": { "type": "string" },
+          "proposed_sections": { "type": "array", "items": { "type": "string" } }
+        },
+        "additionalProperties": true
+      }
+    },
+    "risks": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": true
+}
+
